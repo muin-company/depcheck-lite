@@ -1,0 +1,8 @@
+{
+  "name": "test-require",
+  "version": "1.0.0",
+  "dependencies": {
+    "fs-extra": "^11.0.0",
+    "axios": "^1.0.0"
+  }
+}

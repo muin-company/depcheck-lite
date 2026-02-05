@@ -1,0 +1,34 @@
+{
+  "name": "depcheck-lite",
+  "version": "0.1.0",
+  "description": "Lightning-fast unused dependency checker. Zero config, regex-based.",
+  "main": "dist/index.js",
+  "bin": {
+    "depcheck-lite": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test dist/test/*.test.js",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "depcheck",
+    "dependencies",
+    "unused",
+    "cli",
+    "analyzer"
+  ],
+  "author": "MUIN",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/muin-company/depcheck-lite.git"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0"
+  }
+}
