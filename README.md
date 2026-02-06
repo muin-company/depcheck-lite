@@ -141,6 +141,178 @@ console.log(result.unused); // ['lodash', 'moment']
 
 If you need 100% accuracy, use the original depcheck. If you want fast and good enough, use this.
 
+## Real-World Examples
+
+### 1. CI/CD Integration
+
+**GitHub Actions:**
+
+```yaml
+# .github/workflows/deps.yml
+name: Check Dependencies
+
+on: [push, pull_request]
+
+jobs:
+  deps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+      
+      - name: Check for unused dependencies
+        run: npx depcheck-lite
+      
+      - name: Fail if unused deps found
+        if: failure()
+        run: echo "❌ Please remove unused dependencies"
+```
+
+**GitLab CI:**
+
+```yaml
+# .gitlab-ci.yml
+check-deps:
+  stage: test
+  script:
+    - npx depcheck-lite
+  only:
+    - merge_requests
+    - main
+```
+
+### 2. Monorepo Scanning
+
+Check all packages in a monorepo:
+
+```bash
+# Scan each package
+for pkg in packages/*/; do
+  echo "Checking $pkg"
+  depcheck-lite "$pkg"
+done
+
+# Or parallel execution with GNU parallel
+find packages -maxdepth 1 -type d | parallel depcheck-lite {}
+
+# JSON output for aggregation
+for pkg in packages/*/; do
+  depcheck-lite "$pkg" --json >> results.jsonl
+done
+```
+
+### 3. Pre-commit Hook
+
+Prevent commits with unused dependencies:
+
+```bash
+#!/bin/bash
+# .git/hooks/pre-commit
+
+echo "Checking for unused dependencies..."
+depcheck-lite
+
+if [ $? -ne 0 ]; then
+  echo "❌ Unused dependencies found. Please clean up before committing."
+  exit 1
+fi
+```
+
+With husky + lint-staged:
+
+```json
+{
+  "husky": {
+    "hooks": {
+      "pre-commit": "depcheck-lite"
+    }
+  }
+}
+```
+
+### 4. Exclude Dev Dependencies
+
+Focus only on production dependencies:
+
+```bash
+# Get unused prod dependencies
+depcheck-lite --json | jq '.unused[] | select(.type == "dependencies")'
+
+# Script to clean them up automatically
+depcheck-lite --json | \
+  jq -r '.unused[]' | \
+  xargs -I {} npm uninstall {}
+```
+
+### 5. Custom Scan Patterns
+
+For non-standard project structures:
+
+```bash
+# Scan only specific directories
+depcheck-lite --dirs "src,server,client"
+
+# Ignore test utilities and types
+depcheck-lite --ignore "@types/*" --ignore "jest" --ignore "vitest"
+
+# Ignore all dev-related packages
+depcheck-lite --ignore "@types/*" --ignore "*-loader" --ignore "*-plugin"
+```
+
+### 6. Integration with npm scripts
+
+```json
+{
+  "scripts": {
+    "deps:check": "depcheck-lite",
+    "deps:clean": "depcheck-lite --json | jq -r '.unused[]' | xargs npm uninstall",
+    "pretest": "npm run deps:check",
+    "prepublishOnly": "npm run deps:check"
+  }
+}
+```
+
+Now `npm test` will always check dependencies first.
+
+### 7. Combine with Other Tools
+
+**With npm-check-updates:**
+
+```bash
+# Update dependencies
+ncu -u
+npm install
+
+# Then check for unused
+depcheck-lite
+
+# Clean up if any found
+depcheck-lite --json | jq -r '.unused[]' | xargs npm uninstall
+```
+
+**With size-limit:**
+
+```bash
+# Remove unused deps to reduce bundle size
+depcheck-lite --json | jq -r '.unused[]' | xargs npm uninstall
+npm run build
+size-limit
+```
+
+### 8. Periodic Audits
+
+Run weekly dependency audits:
+
+```bash
+# crontab -e
+0 9 * * 1 cd /path/to/project && depcheck-lite --json > deps-report-$(date +\%Y\%m\%d).json
+
+# Or with GitHub Actions scheduled workflow
+# on:
+#   schedule:
+#     - cron: '0 9 * * 1'  # Every Monday at 9 AM
+```
+
 ## Contributing
 
 PRs welcome! 
