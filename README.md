@@ -61,6 +61,194 @@ Scan custom directories:
 depcheck-lite --dirs src,lib,components
 ```
 
+## Examples
+
+### Example 1: Clean project (no unused deps)
+
+```bash
+$ cd my-react-app
+$ depcheck-lite
+
+Scanning dependencies in package.json...
+Checking 47 dependencies across src/, lib/
+
+✓ All dependencies are being used!
+
+Dependencies checked: 47
+Unused: 0
+```
+
+Exit code: 0 (perfect for CI)
+
+### Example 2: Finding unused dependencies
+
+```bash
+$ cd legacy-project
+$ depcheck-lite
+
+Scanning dependencies in package.json...
+Checking 52 dependencies across src/, lib/
+
+Found 4 unused dependencies:
+
+  - moment         (last used 2 years ago, replaced with date-fns)
+  - request        (replaced with axios)
+  - underscore     (not imported anywhere)
+  - bluebird       (native promises now)
+
+Total: 4/52 dependencies unused
+
+Run 'npm uninstall moment request underscore bluebird' to clean up
+```
+
+Exit code: 1
+
+### Example 3: TypeScript project with @types
+
+```bash
+$ depcheck-lite
+
+Found 8 unused dependencies:
+
+  - @types/express     (dev dependency)
+  - @types/node        (dev dependency)
+  - @types/react       (dev dependency)
+  - chalk
+  - ora
+  - boxen
+  - commander
+  - figlet
+
+# @types packages are often needed even if not directly imported
+$ depcheck-lite --ignore "@types/*"
+
+Found 5 unused dependencies:
+
+  - chalk
+  - ora
+  - boxen
+  - commander
+  - figlet
+
+Total: 5/52 dependencies unused
+```
+
+TypeScript types often don't show up in imports but are still needed!
+
+### Example 4: JSON output for CI pipelines
+
+```bash
+$ depcheck-lite --json
+
+{
+  "total": 47,
+  "unused": [
+    "lodash",
+    "moment",
+    "request"
+  ],
+  "count": 3,
+  "duration": 287
+}
+```
+
+Use in CI to fail builds or post to Slack:
+
+```bash
+#!/bin/bash
+RESULT=$(depcheck-lite --json)
+UNUSED_COUNT=$(echo $RESULT | jq '.count')
+
+if [ $UNUSED_COUNT -gt 0 ]; then
+  echo "⚠️ Found $UNUSED_COUNT unused dependencies!"
+  echo $RESULT | jq '.unused'
+  exit 1
+fi
+```
+
+### Example 5: Ignoring specific packages
+
+```bash
+# Some packages are used in ways regex can't detect
+$ depcheck-lite
+
+Found 3 unused dependencies:
+
+  - dotenv           (loaded via require in config)
+  - @babel/runtime   (injected by babel)
+  - core-js          (polyfills)
+
+# These are actually needed, ignore them
+$ depcheck-lite --ignore dotenv --ignore "@babel/*" --ignore core-js
+
+✓ All dependencies are being used!
+
+# Or create .depcheckrc.json:
+{
+  "ignore": [
+    "dotenv",
+    "@babel/runtime",
+    "core-js"
+  ]
+}
+
+$ depcheck-lite
+✓ All dependencies are being used!
+```
+
+### Example 6: Monorepo / custom directories
+
+```bash
+$ depcheck-lite --dirs packages/api/src,packages/web/src,shared
+
+Scanning dependencies in package.json...
+Checking 83 dependencies across packages/api/src, packages/web/src, shared/
+
+Found 6 unused dependencies:
+
+  - express-rate-limit
+  - helmet
+  - compression
+  - morgan
+  - cookie-parser
+  - passport-local
+
+Total: 6/83 dependencies unused
+```
+
+Scans only the directories you specify.
+
+### Example 7: False positives and edge cases
+
+```bash
+$ depcheck-lite
+
+Found 2 unused dependencies:
+
+  - webpack         (used in webpack.config.js, not in src/)
+  - eslint          (used in .eslintrc, not imported)
+
+# These are tooling deps, typically in devDependencies
+# depcheck-lite focuses on runtime code, not config files
+
+# Solution 1: Ignore build tools
+$ depcheck-lite --ignore webpack --ignore eslint
+
+# Solution 2: Only check production dependencies
+$ depcheck-lite --production
+# (checks only "dependencies", skips "devDependencies")
+
+✓ All runtime dependencies are being used!
+```
+
+Common false positives:
+- Build tools (webpack, vite, esbuild)
+- Linters and formatters (eslint, prettier)
+- Test frameworks (jest, vitest, mocha)
+- Types packages (@types/*)
+
+These should be in `devDependencies` anyway!
+
 ## What it checks
 
 By default, scans these directories:
