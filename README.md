@@ -31,6 +31,8 @@ npx depcheck-lite
 
 ## Usage
 
+### Basic Usage
+
 Run in your project directory:
 
 ```bash
@@ -42,6 +44,54 @@ Check a specific path:
 ```bash
 depcheck-lite ./my-project
 ```
+
+### Interactive Mode (NEW!)
+
+Interactively choose which unused dependencies to remove:
+
+```bash
+depcheck-lite --interactive
+```
+
+Example session:
+```
+Found 5 unused dependencies:
+
+  1. lodash
+  2. moment
+  3. axios
+  4. chalk
+  5. commander
+
+Select packages to remove:
+  - Enter numbers separated by spaces (e.g., "1 3 5")
+  - Enter "all" to remove all unused packages
+  - Press Enter to cancel
+
+Your choice: 1 3 5
+
+Removing 3 package(s):
+  - lodash
+  - axios
+  - commander
+
+Proceed? (y/N): y
+
+Running: npm uninstall --save lodash axios commander
+
+removed 3 packages
+
+✓ Successfully removed 3 package(s)
+```
+
+**Features:**
+- Select specific packages by number
+- Remove all at once with "all"
+- Automatic package manager detection (npm/yarn/pnpm)
+- Confirmation before removal
+- Safe cancellation at any step
+
+### Other Options
 
 Get JSON output:
 

@@ -2,9 +2,11 @@
 
 import * as path from 'path';
 import { DependencyAnalyzer } from './analyzer';
+import { runInteractiveRemoval, detectPackageManager } from './interactive';
 
 interface CliOptions {
   json?: boolean;
+  interactive?: boolean;
   ignore?: string[];
   dirs?: string[];
   cwd: string;
@@ -22,6 +24,8 @@ function parseArgs(args: string[]): CliOptions {
 
     if (arg === '--json') {
       options.json = true;
+    } else if (arg === '--interactive' || arg === '-i') {
+      options.interactive = true;
     } else if (arg === '--ignore') {
       const nextArg = args[++i];
       if (!nextArg) {
@@ -55,21 +59,23 @@ Usage:
   depcheck-lite [path] [options]
 
 Options:
+  -i, --interactive   Interactive mode: choose which packages to remove
   --json              Output results as JSON
   --ignore <package>  Ignore specific package (repeatable)
   --dirs <dirs>       Comma-separated list of directories to scan
   -h, --help          Show this help
 
 Examples:
-  depcheck-lite
-  depcheck-lite ./my-project
-  depcheck-lite --json
-  depcheck-lite --ignore react --ignore lodash
-  depcheck-lite --dirs src,lib,components
+  depcheck-lite                                  # Check current directory
+  depcheck-lite ./my-project                     # Check specific directory
+  depcheck-lite --interactive                    # Interactive removal mode
+  depcheck-lite --json                           # JSON output
+  depcheck-lite --ignore react --ignore lodash   # Ignore specific packages
+  depcheck-lite --dirs src,lib,components        # Scan specific directories
 `);
 }
 
-function main() {
+async function main() {
   const args = process.argv.slice(2);
   const options = parseArgs(args);
 
@@ -84,7 +90,18 @@ function main() {
 
     if (options.json) {
       console.log(JSON.stringify(result, null, 2));
+      process.exit(result.unused.length > 0 ? 1 : 0);
+    } else if (options.interactive) {
+      // Interactive removal mode
+      const packageManager = detectPackageManager(options.cwd);
+      await runInteractiveRemoval({
+        unused: result.unused,
+        packageManager
+      });
+      // Exit successfully after interactive mode
+      process.exit(0);
     } else {
+      // Normal output mode
       if (result.unused.length === 0) {
         console.log('✓ No unused dependencies found!');
       } else {
@@ -93,11 +110,11 @@ function main() {
           console.log(`  - ${dep}`);
         });
         console.log(`\nTotal: ${result.unused.length}/${result.total}`);
+        console.log(`\nTip: Use --interactive to choose which packages to remove`);
       }
+      // Exit with code 1 if unused dependencies found (CI-friendly)
+      process.exit(result.unused.length > 0 ? 1 : 0);
     }
-
-    // Exit with code 1 if unused dependencies found (CI-friendly)
-    process.exit(result.unused.length > 0 ? 1 : 0);
     
   } catch (error) {
     if (error instanceof Error) {
